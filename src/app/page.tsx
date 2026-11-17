@@ -25,8 +25,14 @@ export default function HomePage() {
           {t('homeBegin')}
         </Link>
         <Link
-          href="/plans"
+          href="/dashboard"
           className="rounded-xl border border-sage/25 bg-white/40 px-6 py-3 text-sage-deep transition hover:bg-white/60"
+        >
+          {t('homeDashboard')}
+        </Link>
+        <Link
+          href="/plans"
+          className="rounded-xl border border-sage/20 bg-transparent px-6 py-3 text-sm text-ink-soft transition hover:border-sage/35 hover:text-ink"
         >
           {t('homePlans')}
         </Link>

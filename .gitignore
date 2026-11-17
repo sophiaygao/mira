@@ -20,12 +20,10 @@
 # production
 /build
 /dist
-/mira-geminilaunch.zip
 
 # misc
 .DS_Store
 *.pem
-.cursor/
 
 # debug
 npm-debug.log*
@@ -46,4 +44,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-src/lib/avatar/fuggler-style.jpg

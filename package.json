@@ -5,9 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "postbuild": "node scripts/prepare-static.mjs",
-    "prepare:static": "node scripts/prepare-static.mjs",
-    "zip:geminilaunch": "node scripts/prepare-static.mjs --zip",
+    "postbuild": "node scripts/ensure-index-html.mjs",
+    "ensure-index": "node scripts/ensure-index-html.mjs",
     "start": "next start",
     "lint": "eslint"
   },

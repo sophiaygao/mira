@@ -1,3 +1,5 @@
+'use client'
+
 import { PlansPricing } from '@/components/PlansPricing'
 
 export default function PlansPage() {

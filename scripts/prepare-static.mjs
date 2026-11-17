@@ -1,28 +1,31 @@
 /**
- * Build a GeminiLaunch-ready static Mira app:
- *   dist/index.html  (+ css/js/favicon at the same level)
- * Optional: --zip → mira-geminilaunch.zip with index.html at archive root.
+ * Build a GeminiLaunch-ready static folder:
+ *   dist/
+ *     index.html   ← top level
+ *     favicon.svg
+ *
+ * Then optionally zip so index.html is at the archive root (not nested).
  */
-import { copyFileSync, cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const srcDir = path.join(root, 'static-site')
 const distDir = path.join(root, 'dist')
+const rootIndex = path.join(root, 'index.html')
+const faviconSrc = path.join(root, 'public', 'favicon.svg')
 const zipPath = path.join(root, 'mira-geminilaunch.zip')
 const wantZip = process.argv.includes('--zip')
-const faviconSrc = path.join(root, 'public', 'favicon.svg')
 
-if (!existsSync(path.join(srcDir, 'index.html'))) {
-  console.error('Missing static-site/index.html')
+if (!existsSync(rootIndex)) {
+  console.error('Missing index.html at project root.')
   process.exit(1)
 }
 
 rmSync(distDir, { recursive: true, force: true })
 mkdirSync(distDir, { recursive: true })
-cpSync(srcDir, distDir, { recursive: true })
+copyFileSync(rootIndex, path.join(distDir, 'index.html'))
 
 if (existsSync(faviconSrc)) {
   copyFileSync(faviconSrc, path.join(distDir, 'favicon.svg'))
@@ -38,27 +41,41 @@ if (existsSync(faviconSrc)) {
   )
 }
 
-console.log('Prepared static Mira app in dist/ (index.html at top level):')
-for (const name of ['index.html', 'styles.css', 'app.js', 'mira-engine.js', 'favicon.svg']) {
-  console.log(`  dist/${name}`)
-}
+console.log('Prepared dist/ with index.html at top level:')
+console.log('  dist/index.html')
+console.log('  dist/favicon.svg')
 
 if (!wantZip) {
-  console.log('\nZip for GeminiLaunch:')
+  console.log('\nNext: zip dist contents (index.html at zip root), then upload to GeminiLaunch:')
   console.log('  npm run zip:geminilaunch')
-  console.log('\nUpload dist/ folder or mira-geminilaunch.zip — not the parent mira/ repo.')
+  console.log('\nOr upload the dist/ folder itself (not the parent mira/ folder).')
   process.exit(0)
 }
 
 rmSync(zipPath, { force: true })
-const zipped = spawnSync('zip', ['-r', '-X', zipPath, '.', '-x', '*.DS_Store'], {
-  cwd: distDir,
-  encoding: 'utf8',
-})
-if (zipped.status !== 0) {
-  console.error(zipped.stderr || 'zip failed')
+
+// Zip *contents* of dist so the archive root is index.html (no wrapper folder).
+const zip = spawnSync(
+  'ditto',
+  ['-c', '-k', '--sequesterRsrc', '--keepParent', distDir, zipPath],
+  { encoding: 'utf8' },
+)
+
+// ditto --keepParent nests dist/ — GeminiLaunch may unwrap one level, but
+// instructions say avoid that. Prefer zip of contents via cd + zip.
+rmSync(zipPath, { force: true })
+
+const zipContents = spawnSync(
+  'zip',
+  ['-r', '-X', zipPath, '.', '-x', '*.DS_Store'],
+  { cwd: distDir, encoding: 'utf8' },
+)
+
+if (zipContents.status !== 0) {
+  console.error(zipContents.stderr || zip.stderr || 'zip failed')
+  console.error('Install zip, or manually: cd dist && zip -r ../mira-geminilaunch.zip .')
   process.exit(1)
 }
 
 console.log(`\nCreated ${path.relative(root, zipPath)}`)
-console.log('Archive root includes index.html — ready for GeminiLaunch.')
+console.log('Archive root has index.html — ready for GeminiLaunch upload.')
