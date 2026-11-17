@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mira — open dist/ for the full static app</title>
+    <meta http-equiv="refresh" content="0; url=dist/index.html" />
+    <link rel="icon" href="./public/favicon.svg" type="image/svg+xml" />
+    <style>
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        font-family: system-ui, sans-serif;
+        background: #f5f2ea;
+        color: #29352f;
+        padding: 2rem;
+        text-align: center;
+      }
+      a { color: #344f46; }
+    </style>
+  </head>
+  <body>
+    <p>
+      Full static Mira lives in <a href="./dist/index.html"><code>dist/</code></a>.
+      For GeminiLaunch, run <code>npm run zip:geminilaunch</code> and upload
+      <code>mira-geminilaunch.zip</code> (index.html at the zip root).
+    </p>
+  </body>
+</html>

@@ -1,26 +1,721 @@
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────
+   Mira visual identity
+   Nature-inspired · calm · editorial warmth
+───────────────────────────────────────────── */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Core palette */
+  --forest: #344f46;
+  --sage: #789387;
+  --mist: #c5d2c5;
+  --linen: #f5f2ea;
+  --clay: #d9a995;
+
+  /* Reflection palette */
+  --lavender: #9992b2;
+  --wisteria: #d7d0e0;
+  --blush: #e9d8cf;
+  --sea-glass: #dce5df;
+
+  /* Text */
+  --ink: #29352f;
+  --ink-soft: #727c75;
+
+  /* Semantic surfaces */
+  --surface: var(--linen);
+  --surface-elevated: #ffffff;
+  --ai-message: var(--mist);
+  --user-message: #ffffff;
+  --reflection-card: var(--wisteria);
+  --insight-card: var(--sea-glass);
+  --prompt-card: var(--blush);
+  --support: var(--sage);
+  --clarity: var(--lavender);
+
+  /* Legacy aliases (map old names → new system) */
+  --sage-deep: var(--forest);
+  --fog: var(--sea-glass);
+  --user-bubble: var(--user-message);
+  --mira-bubble: var(--ai-message);
+
+  /* Chrome */
+  --glass: color-mix(in srgb, white 72%, var(--linen));
+  --glass-border: color-mix(in srgb, var(--forest) 8%, transparent);
+  --panel: color-mix(in srgb, white 78%, var(--linen));
+  --btn-label: var(--linen);
+
+  /* Charts — stay inside the Mira palette */
+  --chart-1: var(--forest);
+  --chart-2: var(--sage);
+  --chart-3: var(--lavender);
+  --chart-4: var(--clay);
+  --chart-5: #5f756c;
+  --chart-6: #8a849e;
+  --chart-7: #c4a08e;
+  --chart-8: #6d7f78;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-forest: var(--forest);
+  --color-sage: var(--sage);
+  --color-mist: var(--mist);
+  --color-linen: var(--linen);
+  --color-clay: var(--clay);
+  --color-lavender: var(--lavender);
+  --color-wisteria: var(--wisteria);
+  --color-blush: var(--blush);
+  --color-sea-glass: var(--sea-glass);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-sage-deep: var(--forest);
+  --color-fog: var(--sea-glass);
+  --font-sans: var(--font-dm-sans), var(--font-noto-sc);
+  --font-display: var(--font-dm-sans), var(--font-noto-sc);
+  --font-editorial: var(--font-newsreader), var(--font-noto-serif-sc);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100dvh;
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse 85% 60% at 8% 0%, color-mix(in srgb, var(--mist) 50%, transparent), transparent 55%),
+    radial-gradient(ellipse 75% 55% at 88% 8%, color-mix(in srgb, var(--wisteria) 62%, transparent), transparent 52%),
+    radial-gradient(ellipse 55% 45% at 55% 35%, color-mix(in srgb, var(--lavender) 18%, transparent), transparent 60%),
+    radial-gradient(ellipse 70% 50% at 12% 78%, color-mix(in srgb, var(--blush) 45%, transparent), transparent 50%),
+    radial-gradient(ellipse 60% 45% at 72% 100%, color-mix(in srgb, var(--sea-glass) 60%, transparent), transparent 55%),
+    var(--linen);
+  background-attachment: fixed;
+  font-family: var(--font-dm-sans), var(--font-noto-sc), system-ui, sans-serif;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--sage) 32%, transparent);
+}
+
+/* Atmosphere — soft reflection washes */
+.atmosphere {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.atmosphere__orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(72px);
+  opacity: 0.42;
+  animation: drift 20s ease-in-out infinite;
+}
+
+.atmosphere__orb--a {
+  width: min(55vw, 440px);
+  height: min(55vw, 440px);
+  background: var(--mist);
+  top: -10%;
+  left: -8%;
+}
+
+.atmosphere__orb--b {
+  width: min(48vw, 380px);
+  height: min(48vw, 380px);
+  background: var(--wisteria);
+  top: 18%;
+  right: -12%;
+  animation-delay: -7s;
+  animation-duration: 24s;
+}
+
+.atmosphere__orb--c {
+  width: min(52vw, 400px);
+  height: min(52vw, 400px);
+  background: color-mix(in srgb, var(--lavender) 35%, var(--sea-glass));
+  bottom: -14%;
+  left: 28%;
+  animation-delay: -13s;
+  animation-duration: 28s;
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(2%, 3%) scale(1.05);
+  }
+  66% {
+    transform: translate(-2%, 1%) scale(0.96);
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.88;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-breathe {
+  animation: breathe 5.5s ease-in-out infinite;
+}
+
+/* Logo — pulsating mirror */
+.mira-mark {
+  display: inline-block;
+  line-height: 0;
+}
+
+.mira-mark__pulse,
+.mira-mark__face {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.mira-mark__pulse {
+  opacity: 0.28;
+  animation: mira-pulse-ring 3.6s ease-in-out infinite;
+}
+
+.mira-mark__face {
+  animation: mira-pulse-face 3.6s ease-in-out infinite;
+}
+
+.mira-mark__gleam {
+  animation: mira-gleam 3.6s ease-in-out infinite;
+}
+
+@keyframes mira-pulse-ring {
+  0%,
+  100% {
+    transform: scale(0.96);
+    opacity: 0.18;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 0.42;
+  }
+}
+
+@keyframes mira-pulse-face {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.035);
+    opacity: 1;
+  }
+}
+
+@keyframes mira-gleam {
+  0%,
+  100% {
+    opacity: 0.28;
+  }
+  50% {
+    opacity: 0.62;
+  }
+}
+
+/* Companion pet — floating silhouette cutout */
+.mira-pet {
+  width: 8.5rem;
+  height: 10.75rem;
+}
+
+@media (min-width: 640px) {
+  .mira-pet {
+    width: 10rem;
+    height: 12.5rem;
+  }
+}
+
+.mira-pet__bob {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: calc(100% - 1.25rem);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  animation: mira-pet-bob 3.8s ease-in-out infinite;
+}
+
+.mira-pet__bob:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--sage) 70%, transparent);
+  outline-offset: 4px;
+  border-radius: 1rem;
+}
+
+.mira-pet__body {
+  position: absolute;
+  inset: 0 0 8% 0;
+  display: grid;
+  place-items: end center;
+  animation: mira-pet-sway 4.6s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+
+.mira-pet__face {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  object-position: bottom center;
+  filter: drop-shadow(0 10px 18px color-mix(in srgb, var(--forest) 18%, transparent));
+  animation: mira-pet-blink 5.5s ease-in-out infinite;
+  transform-origin: center;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.mira-pet__shadow {
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  bottom: 0;
+  height: 8%;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--forest) 20%, transparent);
+  filter: blur(7px);
+  animation: mira-pet-shadow 3.8s ease-in-out infinite;
+}
+
+.mira-pet__bubble {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% - 0.35rem);
+  z-index: 2;
+  max-width: 12rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 1rem 1rem 0.35rem 1rem;
+  border: 1px solid color-mix(in srgb, white 55%, var(--mist));
+  background: color-mix(in srgb, white 88%, var(--mist));
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--forest) 10%, transparent);
+  color: var(--ink);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  animation: mira-pet-bubble-in 0.35s ease both;
+}
+
+.mira-pet__hint {
+  margin-top: 0.2rem;
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--forest) 72%, var(--ink-soft));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.mira-pet--show-hint .mira-pet__hint {
+  opacity: 1;
+  animation: mira-pet-hint-pulse 2.2s ease-in-out infinite;
+}
+
+.mira-pet:not(.mira-pet--show-hint):hover .mira-pet__hint,
+.mira-pet:not(.mira-pet--show-hint):focus-within .mira-pet__hint {
+  opacity: 0.85;
+  animation: none;
+}
+
+@keyframes mira-pet-hint-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+/* Mood variants */
+.mira-pet--attending .mira-pet__bob {
+  animation-duration: 2.4s;
+}
+
+.mira-pet--attending .mira-pet__body {
+  animation-duration: 2.8s;
+}
+
+.mira-pet--thinking .mira-pet__bob {
+  animation-name: mira-pet-fidget;
+  animation-duration: 1.15s;
+}
+
+.mira-pet--thinking .mira-pet__body {
+  animation-duration: 1.6s;
+}
+
+.mira-pet--settled .mira-pet__bob {
+  animation-duration: 5.4s;
+}
+
+.mira-pet--settled .mira-pet__body {
+  animation-duration: 6.2s;
+}
+
+.mira-pet--settled .mira-pet__face {
+  animation-duration: 7s;
+}
+
+@keyframes mira-pet-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes mira-pet-fidget {
+  0%,
+  100% {
+    transform: translateY(0) translateX(0);
+  }
+  25% {
+    transform: translateY(-6px) translateX(-3px);
+  }
+  50% {
+    transform: translateY(-12px) translateX(2px);
+  }
+  75% {
+    transform: translateY(-5px) translateX(-2px);
+  }
+}
+
+@keyframes mira-pet-sway {
+  0%,
+  100% {
+    transform: rotate(-2.5deg) scale(1);
+  }
+  50% {
+    transform: rotate(2.5deg) scale(1.03);
+  }
+}
+
+@keyframes mira-pet-shadow {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scaleX(1);
+  }
+  50% {
+    opacity: 0.28;
+    transform: scaleX(0.82);
+  }
+}
+
+@keyframes mira-pet-blink {
+  0%,
+  42%,
+  48%,
+  100% {
+    transform: scaleY(1);
+  }
+  45% {
+    transform: scaleY(0.92);
+  }
+}
+
+@keyframes mira-pet-bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.mira-chat-pet {
+  display: block;
+  width: 1.65rem;
+  height: 1.65rem;
+  object-fit: contain;
+  object-position: bottom center;
+  filter: drop-shadow(0 2px 4px color-mix(in srgb, var(--forest) 12%, transparent));
+  flex-shrink: 0;
+}
+
+/* Future pathway persona cutouts */
+.mira-pathway-persona {
+  display: grid;
+  place-items: center;
+  min-height: 9.5rem;
+  padding: 0.35rem 0.5rem 0.15rem;
+}
+
+.mira-pathway-persona__img {
+  display: block;
+  max-height: 10.5rem;
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  object-position: bottom center;
+  filter: drop-shadow(0 12px 22px color-mix(in srgb, var(--forest) 14%, transparent));
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.mira-pathway-persona__skeleton {
+  display: block;
+  width: 5.5rem;
+  height: 7.5rem;
+  border-radius: 40% 40% 36% 36%;
+  background: color-mix(in srgb, var(--mist) 55%, white);
+  animation: mira-pet-hint-pulse 1.8s ease-in-out infinite;
+}
+
+.animate-rise {
+  animation: rise 0.55s ease both;
+}
+
+/* Dashboard — soft constellation stats */
+.mira-bloom {
+  position: relative;
+  height: 13.5rem;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 45%, color-mix(in srgb, var(--mist) 35%, transparent), transparent 70%),
+    color-mix(in srgb, white 35%, transparent);
+}
+
+.mira-bloom__orb {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  padding: 0.45rem;
+  transform: translate(-50%, -50%);
+  color: var(--linen);
+  text-align: center;
+  cursor: default;
+  animation: mira-bloom-float 4.8s ease-in-out infinite;
+  transition: transform 0.25s ease, filter 0.25s ease;
+}
+
+.mira-bloom__orb:hover {
+  filter: brightness(1.05);
+  z-index: 2;
+}
+
+.mira-bloom__orb--round {
+  border-radius: 50%;
+}
+
+.mira-bloom__orb--soft {
+  border-radius: 42%;
+}
+
+.mira-bloom__orb--petal {
+  border-radius: 48% 42% 50% 46%;
+}
+
+.mira-bloom__label {
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(0.62rem, 1.7vw, 0.78rem);
+  font-weight: 500;
+  line-height: 1.15;
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--forest) 25%, transparent);
+}
+
+.mira-bloom__count {
+  font-size: 0.62rem;
+  opacity: 0.88;
+  letter-spacing: 0.02em;
+}
+
+.mira-bloom__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.85rem;
+  margin-top: 0.85rem;
+  padding: 0;
+  list-style: none;
+}
+
+.mira-bloom__legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+
+.mira-bloom__swatch {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.mira-bloom__legend-name {
+  color: var(--ink);
+}
+
+.mira-bloom__legend-count {
+  opacity: 0.75;
+}
+
+@keyframes mira-bloom-float {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) translateY(0);
+  }
+  50% {
+    transform: translate(-50%, -50%) translateY(-6px);
+  }
+}
+
+/* Type roles */
+.font-display {
+  font-family: var(--font-dm-sans), var(--font-noto-sc), system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+/* Editorial accent — Newsreader italic (EN); Noto Serif SC upright (CN) */
+.font-editorial {
+  font-family: var(--font-newsreader), var(--font-noto-serif-sc), Georgia, serif;
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: -0.01em;
+}
+
+html[lang='zh-CN'] .font-editorial,
+:lang(zh-CN) .font-editorial,
+:lang(zh) .font-editorial {
+  font-style: normal;
+}
+
+.font-label {
+  font-family: var(--font-dm-sans), var(--font-noto-sc), system-ui, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+/* Surfaces */
+.glass-panel {
+  background: var(--panel);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--forest) 5%, transparent);
+}
+
+.surface-reflection {
+  background: color-mix(in srgb, var(--wisteria) 72%, white);
+  border: 1px solid color-mix(in srgb, var(--lavender) 22%, transparent);
+}
+
+.surface-insight {
+  background: color-mix(in srgb, var(--sea-glass) 80%, white);
+  border: 1px solid color-mix(in srgb, var(--sage) 18%, transparent);
+}
+
+.surface-prompt {
+  background: color-mix(in srgb, var(--blush) 78%, white);
+  border: 1px solid color-mix(in srgb, var(--clay) 22%, transparent);
+}
+
+/* Chat bubbles */
+.bubble-ai {
+  background: var(--ai-message);
+  border: 1px solid color-mix(in srgb, var(--sage) 18%, transparent);
+  color: var(--ink);
+}
+
+.bubble-ai--insight {
+  background: color-mix(in srgb, var(--wisteria) 70%, white);
+  border-color: color-mix(in srgb, var(--lavender) 28%, transparent);
+}
+
+.bubble-ai--support {
+  background: var(--mist);
+  border-color: color-mix(in srgb, var(--sage) 22%, transparent);
+}
+
+.bubble-user {
+  background: var(--user-message);
+  border: 1px solid color-mix(in srgb, var(--forest) 10%, transparent);
+  color: var(--ink);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--forest) 4%, transparent);
+}
+
+/* Buttons */
+.btn-primary {
+  background: var(--forest);
+  color: var(--btn-label);
+  transition: background 160ms ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--sage);
+}
+
+.btn-secondary {
+  background: color-mix(in srgb, white 55%, transparent);
+  color: var(--forest);
+  border: 1px solid color-mix(in srgb, var(--sage) 28%, transparent);
+  transition: background 160ms ease;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: color-mix(in srgb, white 78%, transparent);
+}
+
+.prose-mira {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.65;
 }
