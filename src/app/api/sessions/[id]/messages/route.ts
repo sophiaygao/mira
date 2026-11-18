@@ -42,5 +42,9 @@ export async function POST(req: Request, ctx: Ctx) {
     prompt_key: reply.prompt_key,
   })
 
-  return NextResponse.json({ user: userMsg, mira: miraMsg })
+  return NextResponse.json({
+    user: userMsg,
+    mira: miraMsg,
+    engine: reply.engine,
+  })
 }

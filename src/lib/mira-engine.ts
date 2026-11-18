@@ -49,6 +49,7 @@ export async function generateReflectionReply(
 ): Promise<{
   content: string
   prompt_key?: string
+  engine: 'live' | 'fallback'
 }> {
   const covered = coveredSeeds(messages)
   const remaining = SEED_PROMPTS.filter((s) => !covered.includes(s.key))
@@ -75,6 +76,7 @@ export async function generateReflectionReply(
     return {
       content: live,
       prompt_key: nextSeed && (live.includes('?') || live.includes('？')) ? nextSeed.key : undefined,
+      engine: 'live',
     }
   }
 
@@ -86,6 +88,7 @@ export async function generateReflectionReply(
       locale,
     ),
     prompt_key: nextSeed?.key,
+    engine: 'fallback',
   }
 }
 

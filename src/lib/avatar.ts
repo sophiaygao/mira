@@ -1,11 +1,15 @@
-import { promises as fs } from 'fs'
-import path from 'path'
 import sharp from 'sharp'
 import { toFile } from 'openai'
 import { getOpenAIImages } from './openai'
-
-const AVATAR_DIR = path.join(process.cwd(), '.data', 'avatars')
-const PERSONA_DIR = path.join(AVATAR_DIR, 'personas')
+import {
+  storeDeleteAvatar,
+  storeHasAvatar,
+  storeHasPersona,
+  storeReadAvatar,
+  storeReadPersona,
+  storeWriteAvatar,
+  storeWritePersona,
+} from './avatar-store'
 
 /** Flat key color for silhouette cutouts (models may not support transparent output). */
 const CHROMA = { r: 255, g: 0, b: 255 } as const
@@ -37,38 +41,16 @@ Fill the entire background with a flat solid chroma key of exactly ${CHROMA_HEX}
 
 Output: a single full-body character cutout. No grid, no multiple characters, no square frame, no circle crop, no photoreal photo of a person.`
 
-export function avatarPath(guestId: string) {
-  return path.join(AVATAR_DIR, `${guestId}.png`)
-}
-
 export async function hasAvatar(guestId: string) {
-  try {
-    await fs.access(avatarPath(guestId))
-    return true
-  } catch {
-    return false
-  }
+  return storeHasAvatar(guestId)
 }
 
 export async function readAvatar(guestId: string): Promise<Buffer | null> {
-  try {
-    return await fs.readFile(avatarPath(guestId))
-  } catch {
-    return null
-  }
+  return storeReadAvatar(guestId)
 }
 
 export async function deleteAvatar(guestId: string) {
-  try {
-    await fs.unlink(avatarPath(guestId))
-  } catch {
-    /* already gone */
-  }
-  await deleteGuestPersonas(guestId)
-}
-
-export function personaPath(guestId: string, pathwayId: string) {
-  return path.join(PERSONA_DIR, guestId, `${pathwayId}.png`)
+  await storeDeleteAvatar(guestId)
 }
 
 export function personaUrl(pathwayId: string) {
@@ -76,29 +58,11 @@ export function personaUrl(pathwayId: string) {
 }
 
 export async function hasPersona(guestId: string, pathwayId: string) {
-  try {
-    await fs.access(personaPath(guestId, pathwayId))
-    return true
-  } catch {
-    return false
-  }
+  return storeHasPersona(guestId, pathwayId)
 }
 
 export async function readPersona(guestId: string, pathwayId: string): Promise<Buffer | null> {
-  try {
-    return await fs.readFile(personaPath(guestId, pathwayId))
-  } catch {
-    return null
-  }
-}
-
-export async function deleteGuestPersonas(guestId: string) {
-  const dir = path.join(PERSONA_DIR, guestId)
-  try {
-    await fs.rm(dir, { recursive: true, force: true })
-  } catch {
-    /* already gone */
-  }
+  return storeReadPersona(guestId, pathwayId)
 }
 
 function personaPrompt(title: string, description: string) {
@@ -117,6 +81,133 @@ CHANGE only:
 - Color accents that fit the persona, still soft pastels
 
 Full-body single character. Fill the entire background with flat solid chroma ${CHROMA_HEX}. Keep magenta OUT of the character. No text, logos, watermark, grid, or photoreal person.`
+}
+
+/** Knock out near-magenta backdrop so the pet renders as a silhouette. */
+async function cutoutChromaKey(png: Buffer): Promise<Buffer> {
+  const { data, info } = await sharp(png)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true })
+
+  const px = data
+  for (let i = 0; i < px.length; i += 4) {
+    const r = px[i]
+    const g = px[i + 1]
+    const b = px[i + 2]
+    const dr = r - CHROMA.r
+    const dg = g - CHROMA.g
+    const db = b - CHROMA.b
+    const dist = Math.sqrt(dr * dr + dg * dg + db * db)
+
+    const magentaBias = r - Math.max(g, b)
+    if (dist < 78 || (magentaBias > 70 && r > 160 && g < 120 && b > 120)) {
+      px[i + 3] = 0
+    } else if (dist < 110 || (magentaBias > 45 && r > 140)) {
+      px[i + 3] = Math.min(px[i + 3], Math.round(((dist - 78) / 32) * 255))
+    }
+  }
+
+  return sharp(px, {
+    raw: { width: info.width, height: info.height, channels: 4 },
+  })
+    .png()
+    .toBuffer()
+}
+
+async function prepareSubjectImage(image: Buffer) {
+  return sharp(image)
+    .rotate()
+    .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
+    .jpeg({ quality: 85, mozjpeg: true })
+    .toBuffer()
+}
+
+function friendlyImageError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error)
+  const cause =
+    error && typeof error === 'object' && 'cause' in error
+      ? String((error as { cause?: unknown }).cause)
+      : ''
+  const blob = `${message} ${cause}`
+  if (/timed out|timeout|UND_ERR_CONNECT|fetch failed/i.test(blob)) {
+    return 'Avatar generation timed out reaching OpenAI. Check your network/VPN, then try again.'
+  }
+  if (/not supported|unsupported|does not support|doesn't support/i.test(blob)) {
+    return 'This image model rejected an avatar option. Set OPENAI_IMAGE_MODEL=gpt-image-1.5 (or gpt-image-2) in Vercel env and redeploy.'
+  }
+  if (/EROFS|not writable|mira-avatars|Supabase Storage/i.test(blob)) {
+    return message
+  }
+  return message || 'Could not create companion avatar'
+}
+
+function isUnsupportedParamError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error)
+  return /not supported|unsupported|unknown parameter|invalid.*quality|invalid.*background|does not support|doesn't support/i.test(
+    message,
+  )
+}
+
+async function editCompanionImage(args: {
+  image: Awaited<ReturnType<typeof toFile>>
+  prompt: string
+}) {
+  const client = getOpenAIImages()
+  if (!client) throw new Error('Add OPENAI_API_KEY to enable companion avatars.')
+
+  const model = process.env.OPENAI_IMAGE_MODEL?.trim() || 'gpt-image-2'
+  const quality =
+    (process.env.OPENAI_IMAGE_QUALITY?.trim() as 'low' | 'medium' | 'high' | undefined) ||
+    'low'
+
+  const fidelity =
+    model.includes('1.5') || model.includes('gpt-image-1-mini')
+      ? ({ input_fidelity: 'high' as const } as const)
+      : {}
+
+  // Try richest params first; strip options some deployments reject ("not supported").
+  const attempts = [
+    {
+      model,
+      image: args.image,
+      prompt: args.prompt,
+      size: '1024x1024' as const,
+      quality,
+      output_format: 'png' as const,
+      background: 'opaque' as const,
+      n: 1,
+      ...fidelity,
+    },
+    {
+      model,
+      image: args.image,
+      prompt: args.prompt,
+      size: '1024x1024' as const,
+      output_format: 'png' as const,
+      n: 1,
+      ...fidelity,
+    },
+    {
+      model,
+      image: args.image,
+      prompt: args.prompt,
+      size: '1024x1024' as const,
+      n: 1,
+    },
+  ]
+
+  let lastError: unknown
+  for (const params of attempts) {
+    try {
+      return await client.images.edit(params)
+    } catch (error) {
+      lastError = error
+      if (!isUnsupportedParamError(error)) throw error
+      console.warn('images.edit unsupported params; retrying with fewer options', error)
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('Image edit failed')
 }
 
 /** Restyle the guest avatar into a pathway persona cutout. */
@@ -143,27 +234,12 @@ export async function generatePathwayPersona(args: {
     }
   }
 
-  const model = process.env.OPENAI_IMAGE_MODEL?.trim() || 'gpt-image-2'
-  const quality =
-    (process.env.OPENAI_IMAGE_QUALITY?.trim() as 'low' | 'medium' | 'high' | undefined) ||
-    'low'
-
   try {
     const prepared = await prepareSubjectImage(source)
-    const subject = await toFile(prepared, 'companion.png', { type: 'image/jpeg' })
-
-    const result = await client.images.edit({
-      model,
+    const subject = await toFile(prepared, 'companion.jpg', { type: 'image/jpeg' })
+    const result = await editCompanionImage({
       image: subject,
       prompt: personaPrompt(args.title, args.description),
-      size: '1024x1024',
-      quality,
-      output_format: 'png',
-      background: 'opaque',
-      n: 1,
-      ...(model.includes('1.5') || model.includes('gpt-image-1-mini')
-        ? { input_fidelity: 'high' as const }
-        : {}),
     })
 
     const b64 = 'data' in result ? result.data?.[0]?.b64_json : undefined
@@ -172,8 +248,7 @@ export async function generatePathwayPersona(args: {
     }
 
     const cutout = await cutoutChromaKey(Buffer.from(b64, 'base64'))
-    await fs.mkdir(path.join(PERSONA_DIR, args.guestId), { recursive: true })
-    await fs.writeFile(personaPath(args.guestId, args.pathwayId), cutout)
+    await storeWritePersona(args.guestId, args.pathwayId, cutout)
     return {
       ok: true,
       url: `${personaUrl(args.pathwayId)}?t=${Date.now()}`,
@@ -209,61 +284,6 @@ export async function ensurePathwayPersonas(
   return map
 }
 
-/** Knock out near-magenta backdrop so the pet renders as a silhouette. */
-async function cutoutChromaKey(png: Buffer): Promise<Buffer> {
-  const { data, info } = await sharp(png)
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true })
-
-  const px = data
-  for (let i = 0; i < px.length; i += 4) {
-    const r = px[i]
-    const g = px[i + 1]
-    const b = px[i + 2]
-    const dr = r - CHROMA.r
-    const dg = g - CHROMA.g
-    const db = b - CHROMA.b
-    const dist = Math.sqrt(dr * dr + dg * dg + db * db)
-
-    // Magenta-ish + fairly saturated → transparent; soft edge for fuzz.
-    const magentaBias = r - Math.max(g, b)
-    if (dist < 78 || (magentaBias > 70 && r > 160 && g < 120 && b > 120)) {
-      px[i + 3] = 0
-    } else if (dist < 110 || (magentaBias > 45 && r > 140)) {
-      px[i + 3] = Math.min(px[i + 3], Math.round(((dist - 78) / 32) * 255))
-    }
-  }
-
-  return sharp(px, {
-    raw: { width: info.width, height: info.height, channels: 4 },
-  })
-    .png()
-    .toBuffer()
-}
-
-/** Shrink uploads so image edits connect/finish faster. */
-async function prepareSubjectImage(image: Buffer) {
-  return sharp(image)
-    .rotate()
-    .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
-    .jpeg({ quality: 85, mozjpeg: true })
-    .toBuffer()
-}
-
-function friendlyImageError(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error)
-  const cause =
-    error && typeof error === 'object' && 'cause' in error
-      ? String((error as { cause?: unknown }).cause)
-      : ''
-  const blob = `${message} ${cause}`
-  if (/timed out|timeout|UND_ERR_CONNECT|fetch failed/i.test(blob)) {
-    return 'Avatar generation timed out reaching OpenAI. Check your network/VPN, then try again.'
-  }
-  return message || 'Could not create companion avatar'
-}
-
 export async function generateCompanionAvatar(args: {
   guestId: string
   image: Buffer
@@ -275,30 +295,12 @@ export async function generateCompanionAvatar(args: {
     return { ok: false, error: 'Add OPENAI_API_KEY to enable companion avatars.' }
   }
 
-  const model = process.env.OPENAI_IMAGE_MODEL?.trim() || 'gpt-image-2'
-  const quality =
-    (process.env.OPENAI_IMAGE_QUALITY?.trim() as 'low' | 'medium' | 'high' | undefined) ||
-    'low'
-
   try {
     const prepared = await prepareSubjectImage(args.image)
     const subject = await toFile(prepared, 'selfie.jpg', { type: 'image/jpeg' })
-
-    // gpt-image-2 often rejects background:"transparent" — generate opaque magenta
-    // key, then punch it out ourselves so the floating pet stays a silhouette.
-    const result = await client.images.edit({
-      model,
+    const result = await editCompanionImage({
       image: subject,
       prompt: PET_IP_PROMPT,
-      size: '1024x1024',
-      quality,
-      output_format: 'png',
-      background: 'opaque',
-      n: 1,
-      // Face-preserving fidelity is supported on gpt-image-1.5 (not gpt-image-2).
-      ...(model.includes('1.5') || model.includes('gpt-image-1-mini')
-        ? { input_fidelity: 'high' as const }
-        : {}),
     })
 
     const b64 = 'data' in result ? result.data?.[0]?.b64_json : undefined
@@ -307,9 +309,7 @@ export async function generateCompanionAvatar(args: {
     }
 
     const cutout = await cutoutChromaKey(Buffer.from(b64, 'base64'))
-
-    await fs.mkdir(AVATAR_DIR, { recursive: true })
-    await fs.writeFile(avatarPath(args.guestId), cutout)
+    await storeWriteAvatar(args.guestId, cutout)
     return { ok: true, url: `/api/avatar?t=${Date.now()}` }
   } catch (error) {
     console.error('generateCompanionAvatar', error)

@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { useLanguage } from '@/lib/i18n/LanguageProvider'
 import { useAvatar } from '@/lib/avatar/AvatarProvider'
+import { compressSelfie, readApiError } from '@/lib/client-image'
 
 export function SelfAvatar({ className = '' }: { className?: string }) {
   const { t } = useLanguage()
@@ -16,11 +17,12 @@ export function SelfAvatar({ className = '' }: { className?: string }) {
     setError(null)
     setBusy(true)
     try {
+      const compressed = await compressSelfie(file)
       const body = new FormData()
-      body.append('image', file)
+      body.append('image', compressed)
       const res = await fetch('/api/avatar', { method: 'POST', body })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || t('avatarFailed'))
+      if (!res.ok) throw new Error(await readApiError(res, t('avatarFailed')))
+      const data = (await res.json()) as { url?: string }
       setUrl(data.url || `/api/avatar?t=${Date.now()}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : t('avatarFailed'))
@@ -86,7 +88,7 @@ export function SelfAvatar({ className = '' }: { className?: string }) {
         )}
       </button>
       {error && (
-        <span className="absolute right-0 top-[calc(100%+0.35rem)] z-30 w-44 rounded-lg bg-forest/90 px-2 py-1 text-[0.65rem] leading-snug text-linen shadow-sm">
+        <span className="absolute right-0 top-[calc(100%+0.35rem)] z-40 w-52 rounded-lg bg-forest/90 px-2 py-1 text-[0.65rem] leading-snug text-linen shadow-sm">
           {error}
         </span>
       )}

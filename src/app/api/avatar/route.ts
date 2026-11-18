@@ -38,7 +38,19 @@ export async function HEAD() {
 export async function POST(req: Request) {
   try {
     const guestId = await getOrCreateGuestId()
-    const form = await req.formData()
+    let form: FormData
+    try {
+      form = await req.formData()
+    } catch {
+      return NextResponse.json(
+        {
+          error:
+            'Upload was rejected (often too large for Vercel). Use a smaller photo — we compress under ~1MB.',
+        },
+        { status: 413 },
+      )
+    }
+
     const file = form.get('image')
     if (!(file instanceof File)) {
       return NextResponse.json({ error: 'Upload a photo (image field).' }, { status: 400 })
@@ -48,8 +60,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Please upload an image file.' }, { status: 400 })
     }
 
-    if (file.size > 8 * 1024 * 1024) {
-      return NextResponse.json({ error: 'Keep the photo under 8MB.' }, { status: 400 })
+    // Vercel request body limit is ~4.5MB; keep well under after client compress.
+    if (file.size > 2 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: 'Keep the photo under 2MB after compression.' },
+        { status: 413 },
+      )
     }
 
     const bytes = Buffer.from(await file.arrayBuffer())
@@ -67,10 +83,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, url: result.url })
   } catch (error) {
     console.error('POST /api/avatar', error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Could not create avatar' },
-      { status: 500 },
-    )
+    const message =
+      error instanceof Error ? error.message : 'Could not create avatar'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 

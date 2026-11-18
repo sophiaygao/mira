@@ -10,8 +10,12 @@ try {
 
 const IMAGE_TIMEOUT_MS = 3 * 60 * 1000
 
+export function hasOpenAI() {
+  return Boolean(process.env.OPENAI_API_KEY?.trim())
+}
+
 export function getOpenAI() {
-  const key = process.env.OPENAI_API_KEY
+  const key = process.env.OPENAI_API_KEY?.trim()
   if (!key) return null
   return new OpenAI({ apiKey: key })
 }
@@ -22,7 +26,7 @@ export function getOpenAI() {
  * ("does not support file uploads with the current global FormData class").
  */
 export function getOpenAIImages() {
-  const key = process.env.OPENAI_API_KEY
+  const key = process.env.OPENAI_API_KEY?.trim()
   if (!key) return null
   return new OpenAI({
     apiKey: key,
@@ -38,25 +42,34 @@ export async function chatJSON<T>(args: {
   max_tokens?: number
 }): Promise<T | null> {
   const client = getOpenAI()
-  if (!client) return null
+  if (!client) {
+    console.warn('OpenAI skipped: OPENAI_API_KEY is not set (using local fallbacks).')
+    return null
+  }
 
-  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
-  const res = await client.chat.completions.create({
-    model,
-    temperature: args.temperature ?? 0.7,
-    max_tokens: args.max_tokens,
-    response_format: { type: 'json_object' },
-    messages: [
-      { role: 'system', content: args.system },
-      { role: 'user', content: args.user },
-    ],
-  })
-
-  const text = res.choices[0]?.message?.content
-  if (!text) return null
   try {
-    return JSON.parse(text) as T
-  } catch {
+    const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
+    const res = await client.chat.completions.create({
+      model,
+      temperature: args.temperature ?? 0.7,
+      max_tokens: args.max_tokens,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: args.system },
+        { role: 'user', content: args.user },
+      ],
+    })
+
+    const text = res.choices[0]?.message?.content
+    if (!text) return null
+    try {
+      return JSON.parse(text) as T
+    } catch {
+      console.warn('OpenAI JSON parse failed; using fallback.')
+      return null
+    }
+  } catch (error) {
+    console.error('OpenAI chatJSON failed', error)
     return null
   }
 }
@@ -67,18 +80,26 @@ export async function chatText(args: {
   temperature?: number
 }): Promise<string | null> {
   const client = getOpenAI()
-  if (!client) return null
+  if (!client) {
+    console.warn('OpenAI skipped: OPENAI_API_KEY is not set (using local fallbacks).')
+    return null
+  }
 
-  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
-  const res = await client.chat.completions.create({
-    model,
-    temperature: args.temperature ?? 0.9,
-    max_tokens: 340,
-    messages: [
-      { role: 'system', content: args.system },
-      { role: 'user', content: args.user },
-    ],
-  })
+  try {
+    const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
+    const res = await client.chat.completions.create({
+      model,
+      temperature: args.temperature ?? 0.9,
+      max_tokens: 340,
+      messages: [
+        { role: 'system', content: args.system },
+        { role: 'user', content: args.user },
+      ],
+    })
 
-  return res.choices[0]?.message?.content?.trim() || null
+    return res.choices[0]?.message?.content?.trim() || null
+  } catch (error) {
+    console.error('OpenAI chatText failed', error)
+    return null
+  }
 }

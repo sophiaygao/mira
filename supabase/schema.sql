@@ -107,3 +107,18 @@ create policy "mira mirrors access" on public.mira_mirrors
   for all using (true) with check (true);
 create policy "mira pathways access" on public.mira_pathways
   for all using (true) with check (true);
+
+-- Avatar + pathway persona images (required on Vercel; local can use .data/avatars)
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'mira-avatars',
+  'mira-avatars',
+  false,
+  5242880,
+  array['image/png', 'image/jpeg', 'image/webp']
+)
+on conflict (id) do update set
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+-- Service role uploads from the Next.js API; keep bucket private.
