@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getOrCreateGuestId } from '@/lib/guest'
 import * as db from '@/lib/db'
-import { getRequestLocale, localeFromBody, tServer } from '@/lib/i18n/server-locale'
+import { getRequestLocale, localeFromBody } from '@/lib/i18n/server-locale'
+import { pickOpeningPrompt } from '@/lib/openings'
 
 export async function GET() {
   try {
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
     const welcome = await db.addMessage({
       session_id: session.id,
       role: 'mira',
-      content: tServer(locale, 'openingPrompt'),
+      content: pickOpeningPrompt(locale),
     })
 
     return NextResponse.json({ session, messages: [welcome] })

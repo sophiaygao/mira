@@ -2,8 +2,9 @@ import { redirect } from 'next/navigation'
 import { connection } from 'next/server'
 import { getOrCreateGuestId } from '@/lib/guest'
 import * as db from '@/lib/db'
-import { getRequestLocale, tServer } from '@/lib/i18n/server-locale'
+import { getRequestLocale } from '@/lib/i18n/server-locale'
 import { isLocale, type Locale } from '@/lib/i18n/translations'
+import { pickOpeningPrompt } from '@/lib/openings'
 
 export const instant = false
 
@@ -28,7 +29,7 @@ export default async function ReflectPage({ searchParams }: Props) {
   await db.addMessage({
     session_id: session.id,
     role: 'mira',
-    content: tServer(locale, 'openingPrompt'),
+    content: pickOpeningPrompt(locale),
   })
 
   redirect(`/session/${session.id}`)

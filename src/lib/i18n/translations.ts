@@ -159,7 +159,7 @@ const en = {
   welcomeMessage:
     "Take a breath — we can begin whenever you're ready. We don't need a finished answer about the future to start.",
   openingPrompt:
-    'As we continue to navigate this transition, what emotions or thoughts feel most alive for us right now as we seek to balance our passions with the need for stability?',
+    'As we begin, what feels most important for you to understand about the life you want ahead?',
   seedOccupying: 'What has been occupying your thoughts recently?',
   seedFuture: 'What kind of future are you hoping for?',
   seedValues: 'What values feel most important in your life right now?',
@@ -330,8 +330,7 @@ const zh: Record<TranslationKey, string> = {
   home: '首页',
 
   welcomeMessage: '先深呼吸——我们随时可以开始。关于未来，我们不必先有一个完成的答案。',
-  openingPrompt:
-    '当我们继续走过这段转变时，此刻有哪些情绪或念头最鲜活——尤其是在我们试图平衡热情与对稳定的需要时？',
+  openingPrompt: '我们开始时，关于你想要的人生，什么是你最想先弄清楚的？',
   seedOccupying: '最近有什么一直占据着你的心思？',
   seedFuture: '你希望什么样的未来？',
   seedValues: '此刻，哪些价值对你最重要？',
